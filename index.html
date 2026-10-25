@@ -348,12 +348,19 @@ function showRole(r){
     // Asynchronously load classes for this school
     setTimeout(async ()=>{
       try {
-        const cRes = await fetch('/api/educational/classes?schoolId=GPIS');
+        const DEMO_CLASSES_FALLBACK=[{"id": "GPIS_MYP4A_2026", "class_name": "MYP 4A", "grade_level": "Year 10"},{"id": "GPIS_MYP4B_2026", "class_name": "MYP 4B", "grade_level": "Year 10"},{"id": "GPIS_MYP5A_2026", "class_name": "MYP 5A", "grade_level": "Year 11"},{"id": "GPIS_MYP5B_2026", "class_name": "MYP 5B", "grade_level": "Year 11"}];
+        const DEMO_STUDENTS_FALLBACK=[{"id": "demo_1", "name": "Farah Mansour", "id_code": "GPIS-001"},{"id": "demo_2", "name": "Ziad Hassan", "id_code": "GPIS-002"},{"id": "demo_3", "name": "Rina Saber", "id_code": "GPIS-003"},{"id": "demo_4", "name": "Adam Helmy", "id_code": "GPIS-004"},{"id": "demo_5", "name": "Nadia Fouad", "id_code": "GPIS-005"}];
+        // Helper: populate class select
+        const fillClasses=(cls)=>{
+          cSel.innerHTML='<option value="">Select your child\'s class</option>'+
+            cls.map(c=>`<option value="${c.id}">${c.grade_level?c.grade_level+' — ':''}${c.class_name}</option>`).join('');
+        };
+                const cRes = await fetch('/api/educational/classes?schoolId=GPIS');
         const classes = cRes.ok ? await cRes.json() : [];
         const cSel = el('parentClassSelect');
         if (cSel) {
           if (classes.length === 0) {
-            cSel.innerHTML = '<option value="">No classes registered</option>';
+            fillClasses(DEMO_CLASSES_FALLBACK);
           } else {
             cSel.innerHTML = '<option value="">Select your child\'s class</option>' + 
               classes.map(c => `<option value="${c.id}">${c.grade_level ? c.grade_level + ' — ' : ''}${c.class_name}</option>`).join('');
@@ -373,14 +380,18 @@ function showRole(r){
               const sRes = await fetch(`/api/educational/class-students?classId=${encodeURIComponent(classId)}&schoolId=GPIS`);
               const students = sRes.ok ? await sRes.json() : [];
               if (students.length === 0) {
-                sSel.innerHTML = '<option value="">No students in this class</option>';
+                sSel.innerHTML='<option value="">Select student (demo)...</option>'+
+                DEMO_STUDENTS_FALLBACK.map(s=>`<option value="${s.id}" data-id-code="${s.id_code}" data-name="${s.name}">${s.name} — ${s.id_code} (Demo)</option>`).join('');
+              sSel.disabled=false;
               } else {
                 sSel.innerHTML = '<option value="">Select student...</option>' + 
                   students.map(s => `<option value="${s.id}" data-id-code="${s.student_id_code}" data-name="${s.name}" data-class="${s.class_name || ''}">${s.name} — ${s.student_id_code}${s.record_type === 'MOCK' ? ' (Demo)' : ''}</option>`).join('');
                 sSel.disabled = false;
               }
             } catch (_) {
-              sSel.innerHTML = '<option value="">Failed loading roster</option>';
+              sSel.innerHTML='<option value="">Select student (demo)...</option>'+
+              DEMO_STUDENTS_FALLBACK.map(s=>`<option value="${s.id}" data-id-code="${s.id_code}" data-name="${s.name}">${s.name} — ${s.id_code} (Demo)</option>`).join('');
+              sSel.disabled=false;
             }
           };
         }
@@ -414,7 +425,7 @@ function enter(e){
       person=name;
       profile={name,class:klass,year};
       try{
-        const stored=sessionStorage.getItem('nis_balance_preview_scores');
+        const stored=sessionStorage.getItem('gpis_balance_preview_scores');
         const previous=stored?JSON.parse(stored):null;
         if(previous&&previous.name===name){
           scores=previous.scores||{};
@@ -485,7 +496,7 @@ function enter(e){
     entryError('Something went wrong opening the preview. Please try again or refresh this page.');
   }
 }
-function persist(){try{if(role==='student')sessionStorage.setItem('nis_balance_preview_scores',JSON.stringify({name:person,scores,completed}));}catch(_){}}
+function persist(){try{if(role==='student')sessionStorage.setItem('gpis_balance_preview_scores',JSON.stringify({name:person,scores,completed}));}catch(_){}}
 function summary(){const n=Object.keys(scores).length;const avg=n?Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/n):0;return{done:n,avg}};
 function stats(cards){return`<div class="stat-grid">${cards.map(([title,val,note])=>`<div class="stat-card"><div class="stat-label">${title}</div><div class="stat-val">${val}</div><div class="stat-note">${note}</div></div>`).join('')}</div>`}
 function teacherCard(){return`<div class="teacher-card">${`<svg class="teacher-portrait" viewBox="0 0 100 100" role="img" aria-label="Temporary illustration of a chemistry teacher"><defs><linearGradient id="bg-portrait" x2="1" y2="1"><stop stop-color="#dae4ee"/><stop offset="1" stop-color="#b8c7da"/></linearGradient></defs><rect width="100" height="100" rx="19" fill="url(#bg-portrait)"/><path d="M12 100q4-28 38-28t38 28" fill="#235941"/><path d="M36 72l14 17 14-17-6-7H42z" fill="#ffffff"/><path d="M46 82l4 7 5-7-5-4z" fill="#e2a041"/><rect x="42" y="56" width="16" height="20" rx="7" fill="#dba77f"/><ellipse cx="50" cy="39" rx="22" ry="27" fill="#e7b58e"/><path d="M28 37q-3-31 23-31 26 0 22 31-5-7-8-15-14 6-32 7z" fill="#333b46"/><circle cx="42" cy="42" r="1.5" fill="#283748"/><circle cx="58" cy="42" r="1.5" fill="#283748"/><path d="M44 53q6 4 12 0" stroke="#9d624e" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>`}<div><strong>Mr. Ahmed Hassan</strong><small>IB MYP Chemistry Teacher<br>Placeholder profile</small></div></div>`}
@@ -496,7 +507,7 @@ function renderHome(){const s=summary();const title=role==='student'?'Explore th
 else if(role==='parent'){el('homeBody').innerHTML=`${stats([['COMPLETED LABS','7 / 9','Illustrative student record'],['QUIZ AVERAGE','86%','Sample, not a live grade'],['TO EXPLORE','2 labs','Sample progress']])}<div class="dashboard-meta"><div><h3>Mariam Adel — learning snapshot</h3><p>MYP 4A · Illustrative data for parent preview only</p></div>${teacherCard()}</div><div class="report-grid"><div class="report-box"><h3>Recent laboratory scores</h3>${bars([['Dissolving Salt',100],['Metal Ion Detective',75],['Balance the Reaction',75],['Fertilizer Lab',100],['Reversible Reaction',50]])}</div><div class="report-box"><h3>Learning overview</h3><p class="muted" style="line-height:1.8;font-size:13px">Your parent dashboard helps you follow scientific understanding and practice. This version shows fictional learner data; a production portal will display only records linked to your verified account.</p><button class="main-btn sm" data-view="reports">See full progress →</button></div></div>`;}
 else{el('homeBody').innerHTML=`${stats([['LEARNERS',sampleLearners.length,'Fictional preview class'],['COMPLETION RATE','78%','Illustrative class activity'],['AVERAGE RESULT','85%','Illustrative assessments']])}<div class="dashboard-meta"><div><h3>Class learning overview</h3><p>Example student records · No school data is connected</p></div>${teacherCard()}</div>${rosterHTML()}<div style="height:14px"></div><div class="report-grid"><div class="report-box"><h3>Class understanding by level</h3>${bars([['L1 · Remember',93],['L2 · Understand',86],['L3 · Apply',74],['L4 · Analyze',61]])}</div><div class="report-box"><h3>Teaching insight</h3><p class="muted" style="font-size:13px;line-height:1.8">The Level 4 challenge is more demanding than the foundation questions. In a live deployment, the teacher dashboard can highlight topics where learners need additional support.</p><button class="main-btn sm" data-view="reports">View reports →</button></div></div>`;}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>openView(b.dataset.view));}
-function rosterHTML(){const rows=[...sampleLearners];try{const s=JSON.parse(sessionStorage.getItem('nis_balance_preview_scores')||'null');if(s&&s.name&&!rows.some(x=>x.name===s.name)){const v=Object.values(s.scores||{});rows.unshift({name:s.name,class:'Demo learner',done:v.length,avg:v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0})}}catch(_){}return`<div class="roster"><table><thead><tr><th>Student</th><th>Class</th><th>Labs completed</th><th>Average quiz</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${escapeHTML(x.name)}</strong></td><td>${escapeHTML(x.class)}</td><td>${x.done} / 9</td><td>${x.done?x.avg+'%':'—'}</td><td><span class="data-tag ${x.done<7?'mid':''}">${x.done>=7?'On track':'Keep practising'}</span></td></tr>`).join('')}</tbody></table></div>`}
+function rosterHTML(){const rows=[...sampleLearners];try{const s=JSON.parse(sessionStorage.getItem('gpis_balance_preview_scores')||'null');if(s&&s.name&&!rows.some(x=>x.name===s.name)){const v=Object.values(s.scores||{});rows.unshift({name:s.name,class:'Demo learner',done:v.length,avg:v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0})}}catch(_){}return`<div class="roster"><table><thead><tr><th>Student</th><th>Class</th><th>Labs completed</th><th>Average quiz</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td><strong>${escapeHTML(x.name)}</strong></td><td>${escapeHTML(x.class)}</td><td>${x.done} / 9</td><td>${x.done?x.avg+'%':'—'}</td><td><span class="data-tag ${x.done<7?'mid':''}">${x.done>=7?'On track':'Keep practising'}</span></td></tr>`).join('')}</tbody></table></div>`}
 function openView(v){
   if(role==='parent' && v==='labs'){
     openView('reports');
